@@ -31,6 +31,7 @@ public class MidiToLogicParser {
 		for (int x = 0; x < head.ntracks; x++) {
 			events[x] = trks[x].nextEvent();
 		}
+		// in case you want to ignore something
 		boolean[] ignore = new boolean[head.ntracks];
 		// manually set the values
 		int tempo = 500000; // microseconds per quarter note
