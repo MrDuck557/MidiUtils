@@ -31,6 +31,8 @@ public class MidiToLogicParser {
 		for (int x = 0; x < head.ntracks; x++) {
 			events[x] = trks[x].nextEvent();
 		}
+		boolean[] ignore = new boolean[head.ntracks];
+		// manually set the values
 		int tempo = 500000; // microseconds per quarter note
 		// ticks to seconds: ticks / timeSplits * tempo / 1000000
 		int minTime;
@@ -40,6 +42,7 @@ public class MidiToLogicParser {
 		int lastTime = 0; // last time a note was played, in ticks
 		int index = 2; // index of next mlog command
 		int temp;
+		boolean[] done = new boolean[84];
 		while (true) {
 			// look for event at min tick
 			minTime = Integer.MAX_VALUE;
@@ -56,11 +59,15 @@ public class MidiToLogicParser {
 			// do stuff based on event type
 			switch (events[minIndex].type) {
 			case 9: // note on
-				temp = events[minIndex].data[0] - 36;
-				if (temp < 0) { // B2 or lower out of range
+				if (ignore[minIndex]) { // we want to ignore this track
 					break;
 				}
-				if (minTime > lastTime) {
+				temp = events[minIndex].data[0] - 24;
+				if (temp < 27 || temp >= 84 || events[minIndex].data[1] == 0) { // B2 or lower and C8 and higher out of
+																				// range
+					break;
+				}
+				if ((1f * (minTime - lastTime) / timeSplits * tempo / 1000000) >= 0.05) {
 					out.append("write -" + (1f * (minTime - lastTime) / timeSplits * tempo / 1000000) + " bank1 "
 							+ index + "\n");
 					lineCount++;
@@ -70,9 +77,14 @@ public class MidiToLogicParser {
 						out.append("\n\nNew Proc\n\n\n");
 					}
 					lastTime = minTime;
+					done = new boolean[84];
+				}
+				if (done[temp]) {
+					break;
 				}
 				out.append("write " + temp + " bank1 " + index + "\n");
 				lineCount++;
+				done[temp] = true;
 				index++;
 				if (index >= 512) {
 					index = 0;
